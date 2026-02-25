@@ -39,7 +39,7 @@ export default function Signup() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-lg">
-            B
+            N
           </div>
           <h1 className="text-2xl font-semibold text-foreground">Create account</h1>
           <p className="text-sm text-muted-foreground mt-1">Get started with BRSR Parser</p>
