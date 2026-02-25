@@ -20,8 +20,14 @@ export default function Login() {
     try {
       await login(email, password);
       navigate("/dashboard");
-    } catch {
-      toast({ title: "Login failed", description: "Invalid credentials.", variant: "destructive" });
+    } catch (err: any) {
+      let message = "Invalid credentials.";
+      if (err) {
+        message = err.message || message;
+        if (err.response?.data?.message) message = err.response.data.message;
+        if (err.response?.data?.detail) message = err.response.data.detail;
+      }
+      toast({ title: "Login failed", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
     }

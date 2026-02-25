@@ -1,4 +1,4 @@
-import { DocumentStatus } from "@/lib/mock-data";
+import type { DocumentStatus } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertCircle } from "lucide-react";
 
@@ -17,13 +17,13 @@ const statusConfig: Record<DocumentStatus, { label: string; className: string }>
   },
 };
 
-export function StatusBadge({ status, errorMessage }: { status: DocumentStatus; errorMessage?: string }) {
-  const config = statusConfig[status];
+export function StatusBadge({ status, errorMessage }: { status?: DocumentStatus | string; errorMessage?: string }) {
+  const config = (status && (statusConfig as any)[status]) ?? { label: String(status ?? "Unknown"), className: "bg-muted text-foreground" };
 
   const badge = (
     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${config.className}`}>
       {config.label}
-      {status === "failed" && <AlertCircle className="h-3 w-3" />}
+      {String(status) === "failed" && <AlertCircle className="h-3 w-3" />}
     </span>
   );
 

@@ -1,4 +1,4 @@
-import { Upload, FileText, X } from "lucide-react";
+import { Upload, FileText, X, Loader2 } from "lucide-react";
 import { useCallback, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useUpload } from "@/hooks/use-documents";
@@ -29,7 +29,7 @@ export function UploadArea() {
   const handleUpload = async () => {
     if (files.length === 0) return;
     try {
-      await upload.mutateAsync(files);
+      await upload.mutateAsync({ files, onUpdate: () => {} });
       toast({ title: "Upload successful", description: `${files.length} file(s) uploaded. Processing started.` });
       setFiles([]);
     } catch {
@@ -81,8 +81,13 @@ export function UploadArea() {
               </button>
             </div>
           ))}
-          <Button onClick={handleUpload} disabled={upload.isPending} className="w-full">
-            {upload.isPending ? "Uploading..." : `Upload ${files.length} file(s)`}
+          <Button onClick={handleUpload} disabled={upload.isLoading} className="w-full">
+            {upload.isLoading ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Uploading...
+              </span>
+            ) : `Upload ${files.length} file(s)`}
           </Button>
         </div>
       )}

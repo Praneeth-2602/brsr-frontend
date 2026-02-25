@@ -39,11 +39,25 @@ export function PreviewModal({ documentId, documentName, onClose }: Props) {
               <tbody>
                 {data.map((row, i) => (
                   <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
-                    {Object.values(row).map((val, j) => (
-                      <td key={j} className="px-4 py-2.5 whitespace-nowrap text-foreground">
-                        {typeof val === "number" ? val.toLocaleString() : String(val)}
-                      </td>
-                    ))}
+                    {Object.values(row).map((val, j) => {
+                      const render = (() => {
+                        if (val == null) return "";
+                        if (typeof val === "number") return val.toLocaleString();
+                        if (typeof val === "string") return val;
+                        try {
+                          const s = JSON.stringify(val);
+                          return s.length > 200 ? s.slice(0, 200) + "…" : s;
+                        } catch (e) {
+                          return String(val);
+                        }
+                      })();
+
+                      return (
+                        <td key={j} className="px-4 py-2.5 whitespace-nowrap text-foreground">
+                          {render}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>

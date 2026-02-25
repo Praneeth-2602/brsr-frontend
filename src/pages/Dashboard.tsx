@@ -6,6 +6,7 @@ import { PreviewModal } from "@/components/dashboard/PreviewModal";
 import { PdfList } from "@/components/dashboard/PdfList";
 import { ConsolidatedTable } from "@/components/dashboard/ConsolidatedTable";
 import { useDocuments } from "@/hooks/use-documents";
+import { getStoredDocument } from "@/lib/document-store";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"upload" | "consolidated">("upload");
@@ -15,7 +16,7 @@ export default function Dashboard() {
   const { data: documents, isLoading } = useDocuments(activeTab === "upload");
   const { data: allDocs, isLoading: allDocsLoading } = useDocuments(activeTab === "consolidated");
 
-  const previewDoc = documents?.find((d) => d.id === previewId);
+  const previewDoc = documents?.find((d) => d.id === previewId) ?? getStoredDocument(previewId);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -26,7 +27,7 @@ export default function Dashboard() {
           <div className="p-6 max-w-5xl mx-auto">
             <UploadArea />
             <CompanyTable documents={documents} isLoading={isLoading} onPreview={setPreviewId} />
-            <PreviewModal documentId={previewId} documentName={previewDoc?.name} onClose={() => setPreviewId(null)} />
+            <PreviewModal documentId={previewId} documentName={previewDoc?.file_name} onClose={() => setPreviewId(null)} />
           </div>
         ) : (
           <div className="flex h-full">

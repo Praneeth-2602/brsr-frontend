@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { mockApi } from "@/lib/mock-data";
+import * as backend from "@/lib/backend";
+import { clearDocumentStore } from "@/lib/document-store";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -24,20 +25,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await mockApi.login(email, password);
-    localStorage.setItem("brsr_token", res.token);
-    localStorage.setItem("brsr_email", email);
-    setIsAuthenticated(true);
-    setUserEmail(email);
+    const resp = await backend.login({ email, password });
+    const data = resp?.data ?? resp;
+
+    const token = data?.token ?? data?.access_token ?? data?.data?.token ?? data?.data?.access_token;
+
+    if (token) {
+      localStorage.setItem("brsr_token", token);
+      localStorage.setItem("brsr_email", data?.email ?? email);
+      setIsAuthenticated(true);
+      setUserEmail(data?.email ?? email);
+      return;
+    }
+
+    // If backend uses cookie-based sessions and returned 200 OK, consider login successful
+    if (resp && (resp.status === 200 || resp.status === 201)) {
+      localStorage.removeItem("brsr_token");
+      localStorage.setItem("brsr_email", data?.email ?? email);
+      setIsAuthenticated(true);
+      setUserEmail(data?.email ?? email);
+      return;
+    }
+
+    throw new Error("Login failed: no token returned");
   }, []);
 
   const signup = useCallback(async (email: string, password: string) => {
-    await mockApi.signup(email, password);
+    await backend.register({ email, password });
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem("brsr_token");
     localStorage.removeItem("brsr_email");
+    clearDocumentStore();
     setIsAuthenticated(false);
     setUserEmail(null);
   }, []);

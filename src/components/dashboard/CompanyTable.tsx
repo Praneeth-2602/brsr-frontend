@@ -1,11 +1,11 @@
-import { BRSRDocument } from "@/lib/mock-data";
+import type { DocumentListItem } from "@/lib/types";
 import { StatusBadge } from "./StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Props {
-  documents: BRSRDocument[] | undefined;
+  documents: DocumentListItem[] | undefined;
   isLoading: boolean;
   onPreview: (id: string) => void;
 }
@@ -46,14 +46,27 @@ export function CompanyTable({ documents, isLoading, onPreview }: Props) {
           <tbody>
             {documents.map((doc) => (
               <tr key={doc.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                <td className="px-4 py-3 text-muted-foreground">{doc.sector}</td>
-                <td className="px-4 py-3 font-medium text-foreground">{doc.name}</td>
+                <td className="px-4 py-3 text-muted-foreground">{(() => {
+                    const ext = (doc as any).extracted_json;
+                    const val = ext?.entity_details.sector;
+                    if (val == null) return <span className="text-muted-foreground">-</span>;                    
+                    return <span>{String(val)}</span>;
+                  })()}</td>
+                <td className="px-4 py-3 font-medium text-foreground">
+                  <div className="max-w-[220px] truncate">{doc.file_name && doc.file_name.length > 20 ? `${doc.file_name.slice(0,20)}…` : doc.file_name}</div>
+                </td>
                 <td className="px-4 py-3">
-                  {doc.status === "completed" ? (
-                    <span className="text-foreground">{(doc.confidence_score * 100).toFixed(0)}%</span>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
+                  {(() => {
+                    const ext = (doc as any).extracted_json;
+                    const val = ext?.confidence_score ?? ext?.confidence;
+                    if (val == null) return <span className="text-muted-foreground">-</span>;
+                    if (typeof val === "number") {
+                      // show percent when value between 0 and 1
+                      if (val > 0 && val <= 1) return <span>{(val * 100).toFixed(2)}%</span>;
+                      return <span>{val.toLocaleString()}%</span>;
+                    }
+                    return <span>{String(val)}</span>;
+                  })()}
                 </td>
                 <td className="px-4 py-3">
                   <StatusBadge status={doc.status} errorMessage={doc.error_message} />

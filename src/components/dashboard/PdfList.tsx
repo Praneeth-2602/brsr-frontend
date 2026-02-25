@@ -1,10 +1,10 @@
-import { BRSRDocument } from "@/lib/mock-data";
+import type { DocumentListItem } from "@/lib/types";
 import { StatusBadge } from "./StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText } from "lucide-react";
 
 interface Props {
-  documents: BRSRDocument[] | undefined;
+  documents: DocumentListItem[] | undefined;
   isLoading: boolean;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -44,8 +44,8 @@ export function PdfList({ documents, isLoading, selectedId, onSelect }: Props) {
             <div className="flex items-start gap-2 min-w-0">
               <FileText className="h-4 w-4 mt-0.5 text-primary shrink-0" />
               <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
-                <p className="text-xs text-muted-foreground">{doc.sector}</p>
+                <p className="text-sm font-medium text-foreground truncate">{doc.extracted_json?.entity_details.name || doc.file_name}</p>
+                <p className="text-xs text-muted-foreground">{new Date(doc.created_at).toLocaleString()}</p>
               </div>
             </div>
             <StatusBadge status={doc.status} />
