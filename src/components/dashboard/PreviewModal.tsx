@@ -41,10 +41,12 @@ export function PreviewModal({ documentId, documentName, companyName, financialY
               <tbody>
                 {data.map((row, i) => (
                   <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
-                    {Object.values(row).map((val, j) => {
+                    {Object.entries(row).map(([key, val], j) => {
                       const render = (() => {
+                        const keyLc = String(key).toLowerCase();
+                        const isYear = keyLc.includes("year of incorporation") || keyLc === "3. year of incorporation";
                         if (val == null) return "";
-                        if (typeof val === "number") return val.toLocaleString();
+                        if (typeof val === "number") return isYear ? String(val) : val.toLocaleString();
                         if (typeof val === "string") return val;
                         try {
                           const s = JSON.stringify(val);
@@ -53,9 +55,12 @@ export function PreviewModal({ documentId, documentName, companyName, financialY
                           return String(val);
                         }
                       })();
+                      const keyLc = String(key).toLowerCase();
+                      const isYear = keyLc.includes("year of incorporation") || keyLc === "3. year of incorporation";
+                      const isNumeric = typeof val === "number" && !isYear;
 
                       return (
-                        <td key={j} className="px-4 py-2.5 whitespace-normal text-foreground max-h-40 overflow-auto break-words">
+                        <td key={j} className={`px-4 py-2.5 whitespace-normal text-foreground max-h-40 overflow-auto break-words ${isNumeric ? "text-right" : "text-left"}`}>
                           {render}
                         </td>
                       );

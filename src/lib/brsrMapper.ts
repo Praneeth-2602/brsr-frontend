@@ -59,7 +59,10 @@ function buildBaseRow(data: any) {
   row["Sector"] = entity.sector;
   row["1. Corporate Identity Number (CIN)"] = entity.cin;
   row["2. Name of Listed Entity"] = entity.name;
-  row["3. Year of Incorporation"] = entity.year_of_incorporation;
+  row["3. Year of Incorporation"] =
+    entity.year_of_incorporation == null || entity.year_of_incorporation === ""
+      ? ""
+      : String(entity.year_of_incorporation);
   row["4. Registered office address"] = entity.registered_office_address;
   row["5. Corporate office address"] = entity.corporate_office_address;
   row["6. Email ID"] = entity.email;
@@ -239,7 +242,8 @@ export function expandAll(data: any, baseRow: Record<string, any>) {
         acc[k] = "";
         return acc;
       }, {} as Record<string, any>);
-      row["1. Corporate Identity Number (CIN)"] = baseRow["1. Corporate Identity Number (CIN)"];
+      // Keep entity name repeated, but avoid repeating CIN on every expanded row.
+      row["1. Corporate Identity Number (CIN)"] = "";
       row["2. Name of Listed Entity"] = baseRow["2. Name of Listed Entity"];
     }
 

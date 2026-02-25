@@ -39,9 +39,22 @@ export function VirtualTable({
         return "";
     };
 
+    const isYearColumn = (col: string) => {
+        const key = String(col).toLowerCase();
+        return key.includes("year of incorporation") || key === "3. year of incorporation";
+    };
+
+    const isNumericCell = (val: any, col: string): boolean => {
+        if (isYearColumn(col)) return false;
+        return typeof val === "number";
+    };
+
     const formatCellValue = (val: any, col: string): string => {
         if (val == null) return "";
-        if (typeof val === "number") return val.toLocaleString();
+        if (typeof val === "number") {
+            if (isYearColumn(col)) return String(val);
+            return val.toLocaleString();
+        }
         if (typeof val === "string") return val;
 
         const fromReact = reactNodeToText(val);
@@ -166,6 +179,7 @@ export function VirtualTable({
                             const val =
                                 col === "__docLabel" ? row.__docLabel : row[col];
                             const render = formatCellValue(val, col);
+                            const numeric = isNumericCell(val, col);
 
                             return (
                                 <td
@@ -190,7 +204,9 @@ export function VirtualTable({
                                     <textarea
                                         readOnly
                                         value={render}
-                                        className="w-full resize-none bg-transparent outline-none border-none text-sm overflow-auto"
+                                        className={`w-full resize-none bg-transparent outline-none border-none text-sm overflow-hidden hover:overflow-auto ${
+                                            numeric ? "text-right" : "text-left"
+                                        }`}
                                         style={{
                                             height: `${rowHeight - 8}px`,
                                         }}
