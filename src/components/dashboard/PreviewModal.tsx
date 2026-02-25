@@ -5,18 +5,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface Props {
   documentId: string | null;
   documentName?: string;
+  companyName?: string;
+  financialYear?: string | number;
   onClose: () => void;
 }
 
-export function PreviewModal({ documentId, documentName, onClose }: Props) {
+export function PreviewModal({ documentId, documentName, companyName, financialYear, onClose }: Props) {
   const { data, isLoading } = usePreview(documentId);
 
   return (
     <Dialog open={!!documentId} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[80vw] h-[80vh] max-w-none max-h-none overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-foreground">
-            {documentName ? `Preview — ${documentName}` : "Data Preview"}
+            Preview — {companyName}_({financialYear})
           </DialogTitle>
         </DialogHeader>
 
@@ -53,7 +55,7 @@ export function PreviewModal({ documentId, documentName, onClose }: Props) {
                       })();
 
                       return (
-                        <td key={j} className="px-4 py-2.5 whitespace-nowrap text-foreground">
+                        <td key={j} className="px-4 py-2.5 whitespace-normal text-foreground max-h-40 overflow-auto break-words">
                           {render}
                         </td>
                       );

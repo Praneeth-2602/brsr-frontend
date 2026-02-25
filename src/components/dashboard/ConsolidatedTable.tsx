@@ -8,52 +8,62 @@ import { useToast } from "@/hooks/use-toast";
 import React from "react";
 import { jsonToRows } from "@/lib/brsrMapper";
 import VirtualTable from "@/components/dashboard/VirtualTable";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { ChevronUp, ChevronDown } from "lucide-react";
 
 interface Props {
-  selectedId: string | null;
+  selectedIds: string[];
   documents: DocumentListItem[] | undefined;
 }
 
-export function ConsolidatedTable({ selectedId, documents }: Props) {
-  const { data, isLoading } = useConsolidated(true);
+export function ConsolidatedTable({ selectedIds, documents }: Props) {
+  const { isLoading } = useConsolidated(true);
   const { toast } = useToast();
   const [combinedRows, setCombinedRows] = React.useState<Record<string, any>[]>([]);
   const [loadingDocs, setLoadingDocs] = React.useState(false);
-  const docFirstRowIndex = React.useRef<Record<string, number>>({});
-  const rowRefs = React.useRef<Record<string, HTMLTableRowElement | null>>({});
+
+  const sortedDocuments = React.useMemo(() => {
+    const all = [...(documents ?? [])]
+      .filter((d) => (String(d?.status ?? "")).toLowerCase() !== "failed")
+      .sort((a, b) => {
+        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bTime - aTime;
+      });
+
+    if (selectedIds && selectedIds.length > 0) {
+      const set = new Set(selectedIds);
+      return all.filter((d) => set.has(d.id));
+    }
+    return all;
+  }, [documents, selectedIds]);
 
   React.useEffect(() => {
     let mounted = true;
     async function loadAll() {
-      if (!documents || documents.length === 0) {
+      if (sortedDocuments.length === 0) {
         setCombinedRows([]);
         return;
       }
       setLoadingDocs(true);
       const all: Record<string, any>[] = [];
-      const firstIndexMap: Record<string, number> = {};
 
-      for (const doc of documents) {
+      // Use the provided documents list (from /documents) and avoid fetching each document detail.
+      for (const doc of sortedDocuments) {
         try {
-          const detail = await backend.getDocument(doc.id);
-          const extracted = detail.extracted_json || {};
+          const extracted = (doc as any).extracted_json || {};
+          const sector = extracted?.entity_details?.sector || extracted?.entity_details?.name;
           const rows = jsonToRows(extracted);
-          // annotate rows with doc metadata and push
-          const startIndex = all.length;
-          firstIndexMap[doc.id] = startIndex;
+
           for (const r of rows) {
             const name = doc.file_name && doc.file_name.length > 20 ? `${doc.file_name.slice(0, 20)}…` : doc.file_name;
-            all.push({ __docId: doc.id, __fileName: name, ...r });
+            all.push({ __docId: doc.id, __fileName: name, __sector: sector, ...r });
           }
         } catch (e) {
-          // skip if error
+          // skip if error parsing
         }
       }
 
       if (!mounted) return;
-      docFirstRowIndex.current = firstIndexMap;
       setCombinedRows(all);
       setLoadingDocs(false);
     }
@@ -62,22 +72,12 @@ export function ConsolidatedTable({ selectedId, documents }: Props) {
     return () => {
       mounted = false;
     };
-  }, [documents]);
-
-  // scroll to selected document when it changes
-  React.useEffect(() => {
-    if (!selectedId) return;
-    const ref = rowRefs.current[selectedId];
-    if (ref && typeof ref.scrollIntoView === "function") {
-      ref.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [selectedId]);
+  }, [sortedDocuments]);
 
   const [visibleCols, setVisibleCols] = React.useState<string[] | null>(null);
   const [colOrder, setColOrder] = React.useState<string[] | null>(null);
   const [expandedDocs, setExpandedDocs] = React.useState<Record<string, boolean>>({});
   const [scrollToIndex, setScrollToIndex] = React.useState<number | null>(null);
-  const scrollRef = React.useRef<HTMLDivElement | null>(null);
 
   const filteredData = combinedRows;
 
@@ -93,64 +93,105 @@ export function ConsolidatedTable({ selectedId, documents }: Props) {
     if (!colOrder && baseColumns.length) setColOrder(baseColumns.slice());
   }, [baseColumns, visibleCols, colOrder]);
 
-  // Build grouped rows with headers and expand/collapse
-  const computeGrouping = () => {
+  // columns and widths (hooks moved above early returns to preserve hook order)
+  const columns = colOrder ?? baseColumns;
+  const displayColumns = visibleCols ?? columns;
+  const columnWidths = React.useMemo(() => {
+    if (!displayColumns.length) return [] as number[];
+    const minWidth = 140;
+    const maxWidth = 320;
+    const sample = filteredData.slice(0, 250);
+
+    return displayColumns.map((col) => {
+      const headerLen = String(col).length;
+      let maxLen = headerLen;
+      for (const row of sample) {
+        const v = row[col];
+        if (v == null) continue;
+        if (React.isValidElement(v)) {
+          maxLen = Math.max(maxLen, 18);
+          continue;
+        }
+        const s = typeof v === "string" ? v : JSON.stringify(v);
+        maxLen = Math.max(maxLen, s.length);
+      }
+      const estimated = 52 + Math.min(maxLen, 32) * 5.6;
+      return Math.max(minWidth, Math.min(maxWidth, Math.round(estimated)));
+    });
+  }, [displayColumns, filteredData]);
+
+  // Build grouped rows with expand/collapse on first row of each company
+  const { groupedRows, groupIndexMap } = React.useMemo(() => {
     const rows: Record<string, any>[] = [];
     const map: Record<string, number> = {};
-    if (!documents || documents.length === 0) return { groupedRows: rows, groupIndexMap: map };
+    if (!sortedDocuments.length) return { groupedRows: rows, groupIndexMap: map };
 
-    // preserve order of `documents` list
-    for (const doc of documents) {
+    const activeCols = visibleCols ?? (colOrder ?? baseColumns);
+    const firstCol = activeCols[0];
+    const sectorCol = activeCols.find((c) => String(c).toLowerCase().includes("sector"));
+
+    for (const doc of sortedDocuments) {
       const docRows = filteredData.filter((r) => r.__docId === doc.id);
-      const idx = rows.length;
-      map[doc.id] = idx;
+      if (!docRows.length) continue;
 
-      // group header row
+      map[doc.id] = rows.length;
       const isExpanded = expandedDocs[doc.id] ?? true;
-      const headerName = doc.file_name && doc.file_name.length > 20 ? `${doc.file_name.slice(0, 20)}…` : doc.file_name;
-      rows.push({ __isGroupHeader: true, __docId: doc.id, __docLabel: (
-        <div className="flex items-center gap-3">
-          <button
-            className="p-1 rounded hover:bg-muted"
-            onClick={(e) => { e.stopPropagation(); setExpandedDocs((s) => ({ ...s, [doc.id]: !isExpanded })); }}
-          >
-            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </button>
-          <div className="min-w-0">
-            <div className="text-sm font-medium truncate">{headerName}</div>
-            <div className="text-xs text-muted-foreground">{doc.created_at ? new Date(doc.created_at).toLocaleString() : ''}</div>
-          </div>
-        </div>
-      ) });
 
-      if (isExpanded) {
-        const label = doc.file_name && doc.file_name.length > 20 ? `${doc.file_name.slice(0, 20)}…` : doc.file_name;
-        for (const r of docRows) {
-          rows.push({ ...r, __docLabel: label });
+      docRows.forEach((r, index) => {
+        if (index === 0) {
+          const sectorValue = sectorCol ? (r[sectorCol] ?? r.__sector ?? "") : (r.__sector ?? "");
+          const firstCellValue = firstCol
+            ? (String(firstCol).toLowerCase().includes("sector") ? (r[firstCol] ?? r.__sector ?? "") : r[firstCol])
+            : "";
+          rows.push({
+            ...r,
+            ...(firstCol
+              ? {
+                [firstCol]: (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <button
+                      className="p-1 rounded hover:bg-muted"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedDocs((s) => ({ ...s, [doc.id]: !isExpanded }));
+                      }}
+                      aria-label={isExpanded ? "Collapse company rows" : "Expand company rows"}
+                    >
+                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </button>
+                    <span className="truncate">{String(String(firstCol).toLowerCase().includes("sector") ? firstCellValue : sectorValue)}</span>
+                  </div>
+                ),
+              }
+              : {}),
+          });
+          return;
         }
-      }
+
+        if (isExpanded) rows.push({ ...r });
+      });
     }
 
     return { groupedRows: rows, groupIndexMap: map };
-  };
+  }, [sortedDocuments, filteredData, expandedDocs, visibleCols, colOrder, baseColumns]);
 
-  const { groupedRows, groupIndexMap } = computeGrouping();
+  // No merged-cell approximation: show grouped rows directly and let cells wrap/scroll.
 
-  // scroll to group header when selectedId changes
+  // scroll to group header when a single selectedId is provided
   React.useEffect(() => {
-    if (!selectedId) return;
-    const idx = groupIndexMap[selectedId];
+    if (!selectedIds || selectedIds.length !== 1) return;
+    const idx = groupIndexMap[selectedIds[0]];
     if (typeof idx === "number") {
       setScrollToIndex(idx);
       // clear after 1s
       const t = setTimeout(() => setScrollToIndex(null), 1000);
       return () => clearTimeout(t);
     }
-  }, [selectedId, groupIndexMap]);
+  }, [selectedIds, groupIndexMap]);
 
   const handleDownload = async () => {
     try {
-      const ids = selectedId ? [selectedId] : (documents ?? []).map((d) => d.id);
+      const ids = selectedIds && selectedIds.length > 0 ? selectedIds : sortedDocuments.map((d) => d.id);
       const blob = await backend.requestExcel(ids);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -181,47 +222,62 @@ export function ConsolidatedTable({ selectedId, documents }: Props) {
     );
   }
 
-  const columns = ["Document", ...(colOrder ?? baseColumns)];
- 
+  // const columns = colOrder ?? baseColumns;
+  // const displayColumns = visibleCols ?? columns;
+  // const columnWidths = React.useMemo(() => {
+  //   if (!displayColumns.length) return [] as number[];
+  //   const minWidth = 140;
+  //   const maxWidth = 240;
+  //   const sample = filteredData.slice(0, 250);
+
+  //   return displayColumns.map((col) => {
+  //     const headerLen = String(col).length;
+  //     let maxLen = headerLen;
+  //     for (const row of sample) {
+  //       const v = row[col];
+  //       if (v == null) continue;
+  //       if (React.isValidElement(v)) {
+  //         maxLen = Math.max(maxLen, 18);
+  //         continue;
+  //       }
+  //       const s = typeof v === "string" ? v : JSON.stringify(v);
+  //       maxLen = Math.max(maxLen, s.length);
+  //     }
+  //     const estimated = 52 + Math.min(maxLen, 32) * 5.6;
+  //     return Math.max(minWidth, Math.min(maxWidth, Math.round(estimated)));
+  //   });
+  // }, [displayColumns, filteredData]);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">
-          {selectedId ? documents?.find((d) => d.id === selectedId)?.file_name : "All Companies"} — Master Table
+        <h2 className="text-xl font-semibold text-foreground">
+          {selectedIds && selectedIds.length === 1
+            ? documents?.find((d) => d.id === selectedIds[0])?.file_name
+            : selectedIds && selectedIds.length > 1
+              ? `${selectedIds.length} Selected Companies`
+              : "All Companies"} — Master Table
         </h2>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1.5 border-border/80 bg-background/70">
             <Download className="h-3.5 w-3.5" />
             Download Excel
           </Button>
         </div>
       </div>
-      {/* Sticky header + virtualized body (shared horizontal scroller) */}
-      <div className="rounded-lg border bg-card">
-        <div ref={scrollRef} className="overflow-auto" style={{ maxHeight: 'calc(100vh - 260px)' }}>
-          <div className="sticky top-0 z-20 bg-card border-b">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 px-4 py-3 min-w-[220px] border-r">Document</div>
-              <div className="flex-1 grid" style={{ gridTemplateColumns: (visibleCols ?? (colOrder ?? baseColumns)).map(() => '160px').join(' '), minWidth: `${(visibleCols ?? (colOrder ?? baseColumns)).length * 160}px` }}>
-                {(visibleCols ?? (colOrder ?? baseColumns)).map((c) => (
-                  <div key={c} className="px-4 py-3 text-left font-medium text-muted-foreground truncate border-r last:border-r-0">
-                    {c}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
+      <div className="rounded-xl border border-border/70 bg-card/80 backdrop-blur-sm">
+        <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 260px)' }}>
           <div className="p-0">
             <VirtualTable
               columns={columns}
-              rows={groupedRows.map((r) => r)}
-              rowHeight={44}
+              rows={groupedRows}
+              rowHeight={64}
               stickyFirst
-              visibleColumns={(visibleCols ?? (colOrder ?? baseColumns))}
+              visibleColumns={displayColumns}
+              columnWidths={columnWidths}
+              showLeadingColumn={false}
+              stickyColumnCount={3}
               scrollToIndex={scrollToIndex}
-              scrollContainerRef={scrollRef}
             />
           </div>
         </div>

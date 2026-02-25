@@ -35,6 +35,7 @@ export interface AuthResponse {
 }
 
 export interface RegisterRequest {
+  name: string;
   email: string;
   password: string;
 }

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,56 +6,74 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 220 25% 10%;
+    /* Requested palette */
+    /* Primary: Structured Red #B91C1C */
+    --color-primary: 0 74% 42%;
+    /* Secondary/Background Dark: Deep Navy #0F172A */
+    --color-secondary: 222 47% 11%;
+    /* Light: White #FFFFFF */
+    --color-light: 0 0% 100%;
+    /* Accent: Professional Blue #2563EB */
+    --color-accent: 221 83% 53%;
+    /* Neutral: Cool Gray #94A3B8 */
+    --color-neutral: 215 20% 65%;
+    /* Foreground text for white theme */
+    --color-foreground: 222 47% 11%;
+    --table-header: var(--color-secondary);
+
+    /* Map existing tokens to the new palette (HSL triplets) */
+    --background: var(--color-light);
+    --foreground: var(--color-foreground);
 
     --card: 0 0% 100%;
-    --card-foreground: 220 25% 10%;
+    --card-foreground: var(--color-foreground);
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 10%;
+    --popover-foreground: var(--color-foreground);
 
-    --primary: 224 60% 38%;
+    --primary: var(--color-primary);
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 214 20% 94%;
-    --secondary-foreground: 220 25% 10%;
+    --secondary: var(--color-secondary);
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 214 18% 93%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 214 24% 96%;
+    --muted-foreground: var(--color-neutral);
 
-    --accent: 214 20% 94%;
-    --accent-foreground: 220 25% 10%;
+    --accent: var(--color-accent);
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --neutral: var(--color-neutral);
+
+    --destructive: var(--color-primary);
     --destructive-foreground: 0 0% 100%;
 
     --border: 214 20% 90%;
     --input: 214 20% 90%;
-    --ring: 224 60% 38%;
+    --ring: var(--color-primary);
 
     --radius: 0.5rem;
 
-    --sidebar-background: 220 25% 10%;
-    --sidebar-foreground: 214 18% 80%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 220 25% 10%;
-    --sidebar-accent: 220 22% 16%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 220 20% 18%;
-    --sidebar-ring: 224 60% 50%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: var(--color-foreground);
+    --sidebar-primary: var(--color-foreground);
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 80% 96%;
+    --sidebar-accent-foreground: var(--color-primary);
+    --sidebar-border: 214 20% 90%;
+    --sidebar-ring: var(--color-primary);
 
     /* Status colors */
     --status-processing: 45 93% 47%;
     --status-processing-foreground: 45 93% 12%;
     --status-completed: 142 71% 45%;
     --status-completed-foreground: 142 71% 10%;
-    --status-failed: 0 72% 51%;
+    --status-failed: var(--color-primary);
     --status-failed-foreground: 0 0% 100%;
 
     /* Upload area */
-    --upload-border: 224 60% 38%;
-    --upload-bg: 224 60% 97%;
+    --upload-border: var(--color-primary);
+    --upload-bg: 214 24% 97%;
   }
 
   .dark {
@@ -95,7 +113,39 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Space Grotesk', 'Manrope', system-ui, sans-serif;
+  }
+}
+
+/* Table styling: strong header colors and vertical separators */
+@layer base {
+  /* Header cells (both grid-based virtual tables inside .rounded-xl and normal tables) */
+  .rounded-xl .sticky.top-0 .grid > div,
+  table thead th {
+    background: hsl(var(--table-header));
+    color: hsl(var(--primary-foreground));
+    font-weight: 600;
+  }
+
+  /* Vertical separators for grid-based (virtual) tables inside rounded containers */
+  .rounded-xl .grid > div {
+    border-right: 1px solid hsl(var(--border));
+  }
+
+  /* Vertical separators for normal table elements */
+  table th,
+  table td {
+    border-right: 1px solid hsl(var(--border));
+  }
+
+  /* Remove right border on last column to avoid double line at edge */
+  table th:last-child,
+  table td:last-child,
+  .rounded-xl .grid > div:last-child {
+    border-right: 0;
   }
 }
 
@@ -113,5 +163,11 @@
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background-color: hsl(var(--muted-foreground) / 0.3);
     border-radius: 3px;
+  }
+  .surface-gradient {
+    background:
+      radial-gradient(1200px 280px at 10% -10%, hsl(var(--accent) / 0.08), transparent 60%),
+      radial-gradient(900px 240px at 95% -15%, hsl(var(--secondary) / 0.05), transparent 55%),
+      hsl(var(--background));
   }
 }

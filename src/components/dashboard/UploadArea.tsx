@@ -42,12 +42,15 @@ export function UploadArea() {
   };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-foreground">Upload BRSR Reports</h2>
+    <div className="space-y-4 rounded-2xl border border-border/70 bg-card/75 backdrop-blur-sm p-6 shadow-[0_1px_0_hsl(var(--border)),0_8px_24px_hsl(var(--foreground)/0.04)]">
+      <div>
+        {/* <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Ingestion</p> */}
+        <h2 className="text-xl font-semibold text-foreground">Upload BRSR Pdf Reports</h2>
+      </div>
 
       <div
-        className={`relative rounded-lg border-2 border-dashed p-8 text-center transition-colors cursor-pointer ${
-          dragOver ? "border-upload-border bg-upload-bg" : "border-border hover:border-upload-border hover:bg-upload-bg"
+        className={`relative rounded-xl border-2 border-dashed p-9 text-center transition-colors cursor-pointer ${
+          dragOver ? "border-upload-border bg-upload-bg/80" : "border-border/80 hover:border-upload-border hover:bg-upload-bg/70"
         }`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -62,15 +65,15 @@ export function UploadArea() {
           className="hidden"
           onChange={(e) => e.target.files && addFiles(e.target.files)}
         />
-        <Upload className="mx-auto h-10 w-10 text-muted-foreground" />
-        <p className="mt-2 text-sm font-medium text-foreground">Drag & drop PDF files here</p>
-        <p className="text-xs text-muted-foreground">or click to browse</p>
+        <Upload className="mx-auto h-10 w-10 text-primary" />
+        <p className="mt-3 text-sm font-semibold text-foreground">Drop PDF files here</p>
+        <p className="text-xs text-muted-foreground tracking-wide">or click to browse from local storage</p>
       </div>
 
       {files.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {files.map((f, i) => (
-            <div key={i} className="flex items-center justify-between rounded-md border bg-card p-2.5">
+            <div key={i} className="flex items-center justify-between rounded-lg border border-border/70 bg-background/70 p-3">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-primary" />
                 <span className="text-sm text-foreground truncate max-w-[250px]">{f.name}</span>

@@ -1,170 +1,207 @@
 import React from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
 
 interface VirtualTableProps {
     columns: string[];
-    rows: Record<string, any>[]; // may include group header markers
+    rows: Record<string, any>[];
     rowHeight?: number;
     stickyFirst?: boolean;
     visibleColumns?: string[];
     columnWidths?: number[];
-    // optional index to programmatically scroll to
     scrollToIndex?: number | null;
-    // optional external scroll container ref (so header can be in same scroller)
-    scrollContainerRef?: React.RefObject<HTMLDivElement>;
+    showLeadingColumn?: boolean;
+    stickyColumnCount?: number;
+    showHeader?: boolean;
 }
 
-export function VirtualTable({ columns, rows, rowHeight = 44, stickyFirst = true, visibleColumns, columnWidths, scrollToIndex = null, scrollContainerRef }: VirtualTableProps) {
-    const parentRef = React.useRef<HTMLDivElement | null>(null);
+export function VirtualTable({
+    columns,
+    rows,
+    rowHeight = 44,
+    stickyFirst = true,
+    visibleColumns,
+    columnWidths,
+    scrollToIndex = null,
+    showLeadingColumn = true,
+    stickyColumnCount = 3,
+    showHeader = true,
+}: VirtualTableProps) {
+    const tableRef = React.useRef<HTMLTableElement | null>(null);
 
     const visibleCols = visibleColumns ?? columns;
 
-    const rowVirtualizer = useVirtualizer({
-        count: rows.length,
-        getScrollElement: () => (scrollContainerRef?.current ?? parentRef.current),
-        estimateSize: () => rowHeight,
-        overscan: 6,
-    });
-
-    // respond to external scrollToIndex requests
-    React.useEffect(() => {
-        if (typeof scrollToIndex === "number" && scrollToIndex >= 0 && scrollToIndex < rows.length) {
-            rowVirtualizer.scrollToIndex(scrollToIndex, { align: 'center' });
+    const reactNodeToText = (node: any): string => {
+        if (node == null) return "";
+        if (typeof node === "string" || typeof node === "number") return String(node);
+        if (Array.isArray(node)) return node.map(reactNodeToText).filter(Boolean).join(" ");
+        if (React.isValidElement(node)) {
+            return reactNodeToText((node as any).props?.children);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [scrollToIndex]);
+        return "";
+    };
 
-    const totalHeight = rowVirtualizer.getTotalSize();
+    const formatCellValue = (val: any, col: string): string => {
+        if (val == null) return "";
+        if (typeof val === "number") return val.toLocaleString();
+        if (typeof val === "string") return val;
+
+        const fromReact = reactNodeToText(val);
+        if (fromReact) return fromReact;
+
+        if (typeof val === "object") {
+            // Prefer human-readable object fields, especially for sector-like columns.
+            const key = String(col).toLowerCase();
+            const candidates = key.includes("sector")
+                ? [val.sector, val.name, val.value, val.label]
+                : [val.name, val.value, val.label, val.sector];
+            for (const c of candidates) {
+                if (typeof c === "string" || typeof c === "number") return String(c);
+            }
+        }
+
+        try {
+            const s = JSON.stringify(val);
+            return s.length > 300 ? s.slice(0, 300) + "…" : s;
+        } catch {
+            return String(val);
+        }
+    };
+
+    // Column width fallback
+    const dataWidths = React.useMemo(() => {
+        if (columnWidths && columnWidths.length === visibleCols.length) {
+            return columnWidths;
+        }
+        return visibleCols.map(() => 180);
+    }, [columnWidths, visibleCols]);
+
+    const leadingWidth = 220;
+
+    const finalColumns = React.useMemo(() => {
+        if (!showLeadingColumn) return visibleCols;
+        return ["__docLabel", ...visibleCols];
+    }, [showLeadingColumn, visibleCols]);
+
+    const finalWidths = React.useMemo(() => {
+        if (!showLeadingColumn) return dataWidths;
+        return [leadingWidth, ...dataWidths];
+    }, [showLeadingColumn, dataWidths]);
+
+    // Scroll to specific row
+    React.useEffect(() => {
+        if (
+            typeof scrollToIndex !== "number" ||
+            scrollToIndex < 0 ||
+            scrollToIndex >= rows.length
+        )
+            return;
+
+        const target = tableRef.current?.querySelector<HTMLTableRowElement>(
+            `tr[data-row-index="${scrollToIndex}"]`
+        );
+
+        target?.scrollIntoView({ block: "center" });
+    }, [scrollToIndex, rows.length]);
+
+    // Calculate sticky left offset
+    const getStickyLeft = (idx: number) => {
+        if (!stickyFirst || idx >= stickyColumnCount) return undefined;
+        const left = finalWidths
+            .slice(0, idx)
+            .reduce((sum, w) => sum + w, 0);
+        return `${left}px`;
+    };
 
     return (
-        <div className="w-full">
-            {scrollContainerRef ? (
-                // If an external scroll container is provided, render only the inner positioned container
-                <div style={{ height: totalHeight, position: 'relative' }}>
-                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                        const r = rows[virtualRow.index];
-                        const top = virtualRow.start;
-                        const isGroup = !!r.__isGroupHeader;
+        <table
+            ref={tableRef}
+            className="w-full text-sm table-fixed border-collapse"
+            style={{
+                minWidth: `${finalWidths.reduce((s, w) => s + w, 0)}px`,
+            }}
+        >
+            {/* Column widths */}
+            <colgroup>
+                {finalWidths.map((w, idx) => (
+                    <col key={`col-${idx}`} style={{ width: `${w}px` }} />
+                ))}
+            </colgroup>
 
-                        return (
-                            <div
-                                key={virtualRow.index}
+            {/* HEADER */}
+            {showHeader && (
+                <thead>
+                    <tr className="border-b border-border/70">
+                        {finalColumns.map((col, idx) => (
+                            <th
+                                key={col}
+                                className="px-4 py-2.5 text-left font-medium whitespace-nowrap border-b border-border/70"
                                 style={{
-                                    position: 'absolute',
+                                    width: `${finalWidths[idx]}px`,
+                                    minWidth: `${finalWidths[idx]}px`,
+                                    position: "sticky",
                                     top: 0,
-                                    left: 0,
-                                    width: '100%',
-                                    transform: `translateY(${top}px)`,
+                                    left: getStickyLeft(idx),
+                                    zIndex:
+                                        stickyFirst && idx < stickyColumnCount
+                                            ? 100 - idx
+                                            : 50,
                                 }}
-                                className={`flex items-center border-b bg-card ${isGroup ? 'bg-muted/10 font-semibold' : ''}`}
                             >
-                                {/* Document / first column */}
-                                <div
-                                    className={`flex-shrink-0 px-4 py-3 text-left min-w-[220px] border ${stickyFirst ? 'sticky left-0 z-20 bg-card' : ''}`}
-                                >
-                                    {r.__docLabel ?? ''}
-                                </div>
+                                {col === "__docLabel" ? "Document" : col}
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+            )}
 
-                                {/* other columns */}
-                                {(() => {
-                                    const hasWidths = columnWidths && columnWidths.length === visibleCols.length;
-                                    const totalMinWidth = hasWidths ? columnWidths!.reduce((s, w) => s + w, 0) : visibleCols.length * 160;
-                                    const template = hasWidths ? columnWidths!.map((w) => `${w}px`).join(' ') : visibleCols.map(() => '160px').join(' ');
-                                    return (
-                                        <div className="flex-1 min-w-0 grid" style={{ gridTemplateColumns: template, minWidth: `${totalMinWidth}px` }}>
-                                            {visibleCols.map((col) => {
-                                                const val = r[col];
-                                                const render = (() => {
-                                                    if (val == null) return "";
-                                                    if (typeof val === "number") return val.toLocaleString();
-                                                    if (typeof val === "string") return val;
-                                                    try {
-                                                        const s = JSON.stringify(val);
-                                                        return s.length > 200 ? s.slice(0, 200) + "…" : s;
-                                                    } catch (e) {
-                                                        return String(val);
-                                                    }
-                                                })();
-
-                                                return (
-                                                    <div key={col} className="px-4 py-3 whitespace-nowrap text-foreground truncate border">
-                                                        {render}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    );
-                                })()}
-
-                            </div>
-                        );
-                    })}
-                </div>
-            ) : (
-                <div className="overflow-auto" ref={parentRef} style={{ maxHeight: 'calc(100vh - 260px)' }}>
-                    <div style={{ height: totalHeight, position: 'relative' }}>
-                        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                            const r = rows[virtualRow.index];
-                            const top = virtualRow.start;
-                            const isGroup = !!r.__isGroupHeader;
+            {/* BODY */}
+            <tbody>
+                {rows.map((row, i) => (
+                    <tr
+                        key={i}
+                        data-row-index={i}
+                        className="hover:bg-muted/30"
+                        style={{ height: `${rowHeight}px` }}
+                    >
+                        {finalColumns.map((col, idx) => {
+                            const val =
+                                col === "__docLabel" ? row.__docLabel : row[col];
+                            const render = formatCellValue(val, col);
 
                             return (
-                                <div
-                                    key={virtualRow.index}
+                                <td
+                                    key={`${i}-${col}`}
+                                    className="px-2 border-b border-border/70 align-top bg-background"
                                     style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        width: '100%',
-                                        transform: `translateY(${top}px)`,
+                                        width: `${finalWidths[idx]}px`,
+                                        minWidth: `${finalWidths[idx]}px`,
+                                        height: `${rowHeight}px`,
+                                        position:
+                                            stickyFirst && idx < stickyColumnCount
+                                                ? "sticky"
+                                                : undefined,
+                                        left: getStickyLeft(idx),
+                                        zIndex:
+                                            stickyFirst && idx < stickyColumnCount
+                                                ? 50 - idx
+                                                : 1,
                                     }}
-                                    className={`flex items-center border-b bg-card ${isGroup ? 'bg-muted/10 font-semibold' : ''}`}
                                 >
-                                    {/* Document / first column */}
-                                    <div
-                                        className={`flex-shrink-0 px-4 py-3 text-left min-w-[220px] ${stickyFirst ? 'sticky left-0 z-20 bg-card' : ''}`}
-                                        style={{ borderRight: '1px solid rgba(0,0,0,0.04)' }}
-                                    >
-                                        {r.__docLabel ?? ''}
-                                    </div>
-
-                                    {/* other columns */}
-                                    {(() => {
-                                        const hasWidths = columnWidths && columnWidths.length === visibleCols.length;
-                                        const totalMinWidth = hasWidths ? columnWidths!.reduce((s, w) => s + w, 0) : visibleCols.length * 160;
-                                        const template = hasWidths ? columnWidths!.map((w) => `${w}px`).join(' ') : visibleCols.map(() => '160px').join(' ');
-                                        return (
-                                            <div className="flex-1 min-w-0 grid" style={{ gridTemplateColumns: template, minWidth: `${totalMinWidth}px` }}>
-                                                {visibleCols.map((col) => {
-                                                    const val = r[col];
-                                                    const render = (() => {
-                                                        if (val == null) return "";
-                                                        if (typeof val === "number") return val.toLocaleString();
-                                                        if (typeof val === "string") return val;
-                                                        try {
-                                                            const s = JSON.stringify(val);
-                                                            return s.length > 200 ? s.slice(0, 200) + "…" : s;
-                                                        } catch (e) {
-                                                            return String(val);
-                                                        }
-                                                    })();
-
-                                                    return (
-                                                        <div key={col} className="px-4 py-3 whitespace-nowrap text-foreground truncate border">
-                                                            {render}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
+                                    {/* Scrollable cell */}
+                                    <textarea
+                                        readOnly
+                                        value={render}
+                                        className="w-full resize-none bg-transparent outline-none border-none text-sm overflow-auto"
+                                        style={{
+                                            height: `${rowHeight - 8}px`,
+                                        }}
+                                    />
+                                </td>
                             );
                         })}
-                    </div>
-                </div>
-            )}
-        </div>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
     );
 }
 
