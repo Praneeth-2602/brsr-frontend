@@ -29,8 +29,32 @@ export function UploadArea() {
   const handleUpload = async () => {
     if (files.length === 0) return;
     try {
-      await upload.mutateAsync({ files, onUpdate: () => {} });
-      toast({ title: "Upload successful", description: `${files.length} file(s) uploaded. Processing started.` });
+      const result = await upload.mutateAsync({ files, onUpdate: () => {} });
+      const uploadedCount = Array.isArray(result?.uploadedIds) ? result.uploadedIds.length : 0;
+      const duplicateFiles = Array.isArray(result?.skippedDuplicates) ? result.skippedDuplicates : [];
+
+      if (uploadedCount > 0) {
+        const duplicateText = duplicateFiles.length > 0
+          ? ` ${duplicateFiles.length} duplicate file(s) skipped.`
+          : "";
+        toast({
+          title: "Upload completed",
+          description: `${uploadedCount} file(s) uploaded. Processing started.${duplicateText}`,
+        });
+      } else if (duplicateFiles.length > 0) {
+        toast({
+          title: "Duplicate files skipped",
+          description: `${duplicateFiles.length} file(s) already exist and were skipped.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "No files uploaded",
+          description: "No valid new PDF files were found.",
+          variant: "destructive",
+        });
+      }
+
       setFiles([]);
     } catch {
       toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" });

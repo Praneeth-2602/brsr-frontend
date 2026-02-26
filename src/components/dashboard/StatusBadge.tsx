@@ -18,7 +18,8 @@ const statusConfig: Record<DocumentStatus, { label: string; className: string }>
 };
 
 export function StatusBadge({ status, errorMessage }: { status?: DocumentStatus | string; errorMessage?: string }) {
-  const config = (status && (statusConfig as any)[status]) ?? { label: String(status ?? "Unknown"), className: "bg-muted text-foreground" };
+  const normalizedStatus = status === "pending" ? "processing" : status;
+  const config = (normalizedStatus && (statusConfig as any)[normalizedStatus]) ?? { label: String(normalizedStatus ?? "Unknown"), className: "bg-muted text-foreground" };
 
   const badge = (
     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${config.className}`}>

@@ -95,8 +95,8 @@ export function CompanyTable({ documents, isLoading, isRefreshing = false, onRef
                     if (val == null) return <span className="text-muted-foreground">-</span>;
                     if (typeof val === "number") {
                       // show percent when value between 0 and 1
-                      if (val > 0 && val <= 1) return <span>{(val * 100).toFixed(2)}%</span>;
-                      return <span>{val.toLocaleString()}%</span>;
+                      if (val > 0 && val <= 1) return <span>{Math.min(val * 100, 100).toFixed(2)}%</span>;
+                      return <span>{Math.min(val, 100).toLocaleString()}%</span>;
                     }
                     return <span>{String(val)}</span>;
                   })()}

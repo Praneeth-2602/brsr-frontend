@@ -7,6 +7,13 @@ import type {
     LoginRequest,
 } from "./types";
 
+export interface UploadFilesResult {
+    uploadedIds: string[];
+    uploadedFiles: string[];
+    skippedDuplicates: string[];
+    skippedInvalid: string[];
+}
+
 export async function listDocuments(): Promise<DocumentListItem[]> {
     const resp = await api.get("/documents");
     return resp.data;
@@ -17,12 +24,21 @@ export async function getDocument(id: string): Promise<DocumentDetail> {
     return resp.data;
 }
 
-export async function uploadFiles(files: File[]) {
+export async function uploadFiles(files: File[]): Promise<UploadFilesResult> {
     const fd = new FormData();
     files.forEach(f => fd.append("files", f)); // multiple entries named "files"
     const resp = await api.post("/documents/upload/", fd);
-    // resp.data.documents is an array of created documents
-    return resp.data.documents.map(d => d.document_id);
+
+    const documents = Array.isArray(resp?.data?.documents) ? resp.data.documents : [];
+    const skippedDuplicates = Array.isArray(resp?.data?.skipped_duplicates) ? resp.data.skipped_duplicates : [];
+    const skippedInvalid = Array.isArray(resp?.data?.skipped_invalid) ? resp.data.skipped_invalid : [];
+
+    return {
+        uploadedIds: documents.map((d: any) => d.document_id),
+        uploadedFiles: documents.map((d: any) => d.file_name),
+        skippedDuplicates,
+        skippedInvalid,
+    };
 }
 
 export async function getStatus(documentIds: string[]) {
@@ -50,7 +66,8 @@ export async function uploadAndPoll(
     onUpdate: (docs: DocumentListItem[]) => void,
     interval = 2000,
 ): Promise<DocumentListItem[]> {
-    const ids = await uploadFiles(files);
+    const result = await uploadFiles(files);
+    const ids = result.uploadedIds;
 
     if (!ids || ids.length === 0) return [];
 

@@ -59,22 +59,23 @@ export function useUpload() {
     return useMutation({
         // Only upload files in the mutation (keeps `isLoading` limited to upload step).
         mutationFn: async ({ files }: { files: File[] }) => {
-            const ids = await backend.uploadFiles(files);
-            return ids;
+            return backend.uploadFiles(files);
         },
         // After upload succeeds, immediately add rows as processing and then poll /documents every 5s.
-        onSuccess: (ids: unknown, variables: any) => {
-            const uploadedIds = Array.isArray(ids) ? (ids as string[]) : [];
+        onSuccess: (result: any, variables: any) => {
+            const uploadedIds = Array.isArray(result?.uploadedIds) ? (result.uploadedIds as string[]) : [];
+            const uploadedFiles = Array.isArray(result?.uploadedFiles) ? (result.uploadedFiles as string[]) : [];
             const { onUpdate, files } = variables || {};
 
             (async function pollLoop() {
                 try {
                     // Add placeholders as soon as upload returns 200.
                     const placeholders = uploadedIds.map((id: string, idx: number) => {
+                        const uploadedName = uploadedFiles[idx];
                         const f = Array.isArray(files) ? files[idx] : undefined;
                         return {
                             id,
-                            file_name: f ? f.name : `document-${id}`,
+                            file_name: uploadedName || (f ? f.name : `document-${id}`),
                             status: "processing",
                             created_at: new Date().toISOString(),
                             parsed_at: null,
