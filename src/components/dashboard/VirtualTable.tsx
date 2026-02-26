@@ -1,4 +1,5 @@
 import React from "react";
+import { trimTrailingBracketSuffix } from "@/lib/company-name";
 
 interface VirtualTableProps {
     columns: string[];
@@ -44,6 +45,11 @@ export function VirtualTable({
         return key.includes("year of incorporation") || key === "3. year of incorporation";
     };
 
+    const isCompanyNameColumn = (col: string) => {
+        const key = String(col).toLowerCase();
+        return key.includes("name of listed entity") || key.includes("company name");
+    };
+
     const isNumericCell = (val: any, col: string): boolean => {
         if (isYearColumn(col)) return false;
         return typeof val === "number";
@@ -55,7 +61,9 @@ export function VirtualTable({
             if (isYearColumn(col)) return String(val);
             return val.toLocaleString();
         }
-        if (typeof val === "string") return val;
+        if (typeof val === "string") {
+            return isCompanyNameColumn(col) ? trimTrailingBracketSuffix(val) : val;
+        }
 
         const fromReact = reactNodeToText(val);
         if (fromReact) return fromReact;
@@ -67,7 +75,10 @@ export function VirtualTable({
                 ? [val.sector, val.name, val.value, val.label]
                 : [val.name, val.value, val.label, val.sector];
             for (const c of candidates) {
-                if (typeof c === "string" || typeof c === "number") return String(c);
+                if (typeof c === "string" || typeof c === "number") {
+                    const raw = String(c);
+                    return isCompanyNameColumn(col) ? trimTrailingBracketSuffix(raw) : raw;
+                }
             }
         }
 

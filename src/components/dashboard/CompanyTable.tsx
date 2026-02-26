@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import React from "react";
+import { trimTrailingBracketSuffix } from "@/lib/company-name";
 
 interface Props {
   documents: DocumentListItem[] | undefined;
@@ -80,7 +81,9 @@ export function CompanyTable({ documents, isLoading, isRefreshing = false, onRef
                   return <span>{String(val)}</span>;
                 })()}</td>
                 <td className="px-4 py-3 font-medium text-foreground">
-                  <div className="max-w-[220px] truncate">{doc.extracted_json?.entity_details?.name || doc.file_name}</div>
+                  <div className="max-w-[220px] truncate">
+                    {trimTrailingBracketSuffix(doc.extracted_json?.entity_details?.name || doc.file_name)}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-foreground">{(() => {
                   const ext = (doc as any).extracted_json;
