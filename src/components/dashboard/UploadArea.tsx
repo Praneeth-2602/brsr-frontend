@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 export function UploadArea() {
   const [files, setFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [isSubmittingUpload, setIsSubmittingUpload] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const upload = useUpload();
   const { toast } = useToast();
@@ -28,8 +29,27 @@ export function UploadArea() {
 
   const handleUpload = async () => {
     if (files.length === 0) return;
+    setIsSubmittingUpload(true);
     try {
-      const result = await upload.mutateAsync({ files, onUpdate: () => {} });
+      let placeholdersResolved = false;
+      let resolvePlaceholders: (() => void) | null = null;
+      const placeholdersReady = new Promise<void>((resolve) => {
+        resolvePlaceholders = resolve;
+      });
+
+      const result = await upload.mutateAsync({
+        files,
+        onUpdate: () => {},
+        onPlaceholdersApplied: () => {
+          if (!placeholdersResolved) {
+            placeholdersResolved = true;
+            resolvePlaceholders?.();
+          }
+        },
+      });
+
+      await placeholdersReady;
+
       const uploadedCount = Array.isArray(result?.uploadedIds) ? result.uploadedIds.length : 0;
       const duplicateFiles = Array.isArray(result?.skippedDuplicates) ? result.skippedDuplicates : [];
 
@@ -58,6 +78,8 @@ export function UploadArea() {
       setFiles([]);
     } catch {
       toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setIsSubmittingUpload(false);
     }
   };
 
@@ -108,8 +130,8 @@ export function UploadArea() {
               </button>
             </div>
           ))}
-          <Button onClick={handleUpload} disabled={upload.isLoading} className="w-full">
-            {upload.isLoading ? (
+          <Button onClick={handleUpload} disabled={isSubmittingUpload || upload.isPending} className="w-full">
+            {isSubmittingUpload || upload.isPending ? (
               <span className="inline-flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Uploading...

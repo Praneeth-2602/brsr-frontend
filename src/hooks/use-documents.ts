@@ -65,7 +65,7 @@ export function useUpload() {
         onSuccess: (result: any, variables: any) => {
             const uploadedIds = Array.isArray(result?.uploadedIds) ? (result.uploadedIds as string[]) : [];
             const uploadedFiles = Array.isArray(result?.uploadedFiles) ? (result.uploadedFiles as string[]) : [];
-            const { onUpdate, files } = variables || {};
+            const { onUpdate, onPlaceholdersApplied, files } = variables || {};
 
             (async function pollLoop() {
                 try {
@@ -85,6 +85,7 @@ export function useUpload() {
                     upsertDocuments(placeholders);
                     qc.setQueryData(["documents"], (old: any) => mergeById(old, placeholders));
                     qc.setQueryData(["consolidated"], (old: any) => mergeById(old, placeholders));
+                    try { onPlaceholdersApplied?.(); } catch (e) { /* swallow */ }
 
                     try { onUpdate?.(placeholders); } catch (e) { /* swallow */ }
 
