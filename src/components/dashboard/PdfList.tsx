@@ -111,7 +111,7 @@ export function PdfList({ documents, isLoading, selectedIds, onChange }: Props) 
             />
             <div className="flex items-start justify-between gap-2 w-full">
               <div className="flex items-start gap-2 min-w-0">
-                <FileText className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                {/* <FileText className="h-4 w-4 mt-0.5 text-primary shrink-0" /> */}
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{doc.extracted_json?.entity_details.name}</p>
                   {/* <p className="text-xs text-muted-foreground">{new Date(doc.created_at).toLocaleString()}</p> */}

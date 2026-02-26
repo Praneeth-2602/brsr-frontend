@@ -20,8 +20,8 @@ export function DashboardSidebar({ activeTab, onTabChange }: Props) {
   };
 
   const tabs = [
-    { id: "upload" as const, label: "Upload & Companies", icon: Upload },
-    { id: "consolidated" as const, label: "Database", icon: BarChart3 },
+    { id: "upload" as const, label: "Upload", icon: Upload },
+    { id: "consolidated" as const, label: "PDF Reports", icon: BarChart3 },
   ];
   const displayName = useMemo(() => {
     if (userName && userName.trim()) return userName.trim();
@@ -42,8 +42,8 @@ export function DashboardSidebar({ activeTab, onTabChange }: Props) {
           </div>
           {!collapsed ? (
             <div>
-              <p className="text-[11px] uppercase tracking-[0.16em] text-sidebar-foreground/65">Workspace</p>
-              <span className="text-base font-semibold text-sidebar-primary">Nivra</span>
+              {/* <p className="text-[11px] uppercase tracking-[0.16em] text-sidebar-foreground/65">Workspace</p> */}
+              <span className="text-base font-semibold text-sidebar-primary">NIVRA</span>
             </div>
           ) : null}
         </div>

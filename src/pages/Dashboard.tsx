@@ -52,7 +52,7 @@ export default function Dashboard() {
           <div className="flex h-full">
             {/* Left column - PDF list */}
             <div className="w-80 border-r border-border/70 bg-card/70 backdrop-blur-sm p-5 overflow-auto shrink-0 scrollbar-thin">
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.16em] mb-4">Documents</h2>
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.16em] mb-4"> </h2>
               <PdfList
                 documents={allDocs?.filter((doc) => doc.status !== "failed") ?? []}
                 isLoading={allDocsLoading}

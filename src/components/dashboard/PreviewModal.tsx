@@ -1,6 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePreview } from "@/hooks/use-documents";
 import { Skeleton } from "@/components/ui/skeleton";
+import React from "react";
+import VirtualTable from "@/components/dashboard/VirtualTable";
 
 interface Props {
   documentId: string | null;
@@ -13,12 +15,46 @@ interface Props {
 export function PreviewModal({ documentId, documentName, companyName, financialYear, onClose }: Props) {
   const { data, isLoading } = usePreview(documentId);
 
+  const rows = data ?? [];
+
+  const columns = React.useMemo(() => {
+    if (!rows.length) return [] as string[];
+    return Object.keys(rows[0]);
+  }, [rows]);
+
+  const columnWidths = React.useMemo(() => {
+    if (!columns.length) return [] as number[];
+    const minWidth = 140;
+    const maxWidth = 320;
+    const sample = rows.slice(0, 250);
+
+    return columns.map((col) => {
+      const headerLen = String(col).length;
+      let maxLen = headerLen;
+
+      for (const row of sample) {
+        const v = row[col];
+        if (v == null) continue;
+        if (React.isValidElement(v)) {
+          maxLen = Math.max(maxLen, 18);
+          continue;
+        }
+
+        const s = typeof v === "string" ? v : JSON.stringify(v);
+        maxLen = Math.max(maxLen, s.length);
+      }
+
+      const estimated = 52 + Math.min(maxLen, 32) * 5.6;
+      return Math.max(minWidth, Math.min(maxWidth, Math.round(estimated)));
+    });
+  }, [columns, rows]);
+
   return (
     <Dialog open={!!documentId} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="w-[80vw] h-[80vh] max-w-none max-h-none overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-foreground">
-            Preview — {companyName}_({financialYear})
+            {companyName}_{financialYear}
           </DialogTitle>
         </DialogHeader>
 
@@ -27,48 +63,19 @@ export function PreviewModal({ documentId, documentName, companyName, financialY
             <div className="space-y-2 p-4">
               {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
             </div>
-          ) : data && data.length > 0 ? (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50 sticky top-0">
-                  {Object.keys(data[0]).map((key) => (
-                    <th key={key} className="px-4 py-2.5 text-left font-medium text-muted-foreground whitespace-nowrap">
-                      {key}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((row, i) => (
-                  <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
-                    {Object.entries(row).map(([key, val], j) => {
-                      const render = (() => {
-                        const keyLc = String(key).toLowerCase();
-                        const isYear = keyLc.includes("year of incorporation") || keyLc === "3. year of incorporation";
-                        if (val == null) return "";
-                        if (typeof val === "number") return isYear ? String(val) : val.toLocaleString();
-                        if (typeof val === "string") return val;
-                        try {
-                          const s = JSON.stringify(val);
-                          return s.length > 200 ? s.slice(0, 200) + "…" : s;
-                        } catch (e) {
-                          return String(val);
-                        }
-                      })();
-                      const keyLc = String(key).toLowerCase();
-                      const isYear = keyLc.includes("year of incorporation") || keyLc === "3. year of incorporation";
-                      const isNumeric = typeof val === "number" && !isYear;
-
-                      return (
-                        <td key={j} className={`px-4 py-2.5 whitespace-normal text-foreground max-h-40 overflow-auto break-words ${isNumeric ? "text-right" : "text-left"}`}>
-                          {render}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          ) : rows.length > 0 ? (
+            <div className="rounded-xl border border-border/70 bg-card/80 backdrop-blur-sm">
+              <VirtualTable
+                columns={columns}
+                rows={rows}
+                rowHeight={64}
+                stickyFirst
+                visibleColumns={columns}
+                columnWidths={columnWidths}
+                showLeadingColumn={false}
+                stickyColumnCount={3}
+              />
+            </div>
           ) : (
             <p className="p-6 text-center text-muted-foreground">No preview data available</p>
           )}

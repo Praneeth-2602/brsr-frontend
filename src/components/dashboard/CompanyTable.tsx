@@ -63,8 +63,9 @@ export function CompanyTable({ documents, isLoading, isRefreshing = false, onRef
           <thead>
             <tr className="border-b bg-muted/45">
               <th className="px-4 py-3 text-left text-xs uppercase tracking-[0.12em] font-semibold text-white">Sector</th>
-              <th className="px-4 py-3 text-left text-xs uppercase tracking-[0.12em] font-semibold text-white">Company</th>
-              <th className="px-4 py-3 text-left text-xs uppercase tracking-[0.12em] font-semibold text-white">Confidence</th>
+              <th className="px-4 py-3 text-left text-xs uppercase tracking-[0.12em] font-semibold text-white">Company Name</th>
+              <th className="px-4 py-3 text-left text-xs uppercase tracking-[0.12em] font-semibold text-white">Year</th>
+              <th className="px-4 py-3 text-left text-xs uppercase tracking-[0.12em] font-semibold text-white">Confidence Score</th>
               <th className="px-4 py-3 text-left text-xs uppercase tracking-[0.12em] font-semibold text-white">Status</th>
               <th className="px-4 py-3 text-left text-xs uppercase tracking-[0.12em] font-semibold text-white">Preview</th>
             </tr>
@@ -72,15 +73,21 @@ export function CompanyTable({ documents, isLoading, isRefreshing = false, onRef
           <tbody>
             {sortedDocuments.map((doc) => (
               <tr key={doc.id} className="border-b border-border/60 last:border-0 hover:bg-muted/25 transition-colors">
-                <td className="px-4 py-3 text-muted-foreground">{(() => {
+                <td className="px-4 py-3 text-foreground">{(() => {
                   const ext = (doc as any).extracted_json;
                   const val = ext?.entity_details.sector;
                   if (val == null) return <span className="text-muted-foreground">-</span>;
                   return <span>{String(val)}</span>;
                 })()}</td>
                 <td className="px-4 py-3 font-medium text-foreground">
-                  <div className="max-w-[220px] truncate">{doc.file_name && doc.file_name.length > 20 ? `${doc.file_name.slice(0, 20)}…` : doc.file_name}</div>
+                  <div className="max-w-[220px] truncate">{doc.extracted_json?.entity_details?.name || doc.file_name}</div>
                 </td>
+                <td className="px-4 py-3 text-foreground">{(() => {
+                  const ext = (doc as any).extracted_json;
+                  const val = ext?.entity_details.financial_year;
+                  if (val == null) return <span className="text-muted-foreground">-</span>;
+                  return <span>{String(val)}</span>;
+                })()}</td>
                 <td className="px-4 py-3">
                   {(() => {
                     const ext = (doc as any).extracted_json;

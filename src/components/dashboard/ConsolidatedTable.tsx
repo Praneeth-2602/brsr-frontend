@@ -252,11 +252,7 @@ export function ConsolidatedTable({ selectedIds, documents }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-foreground">
-          {selectedIds && selectedIds.length === 1
-            ? documents?.find((d) => d.id === selectedIds[0])?.file_name
-            : selectedIds && selectedIds.length > 1
-              ? `${selectedIds.length} Selected Companies`
-              : "All Companies"} — Master Table
+          Preview
         </h2>
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1.5 border-border/80 bg-background/70">

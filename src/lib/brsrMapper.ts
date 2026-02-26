@@ -247,13 +247,13 @@ export function expandAll(data: any, baseRow: Record<string, any>) {
       row["2. Name of Listed Entity"] = baseRow["2. Name of Listed Entity"];
     }
 
-    if (i < holdings.length) {
-      row["23.A Group Entity"] = holdings[i].name;
-      const rawType = holdings[i].type;
-      // row["23. Group Entity Type"] = rawType;
-      row["23.B Group Entity Type"] = mapGroupEntityType(rawType);
-      row["23.C % Shares (%)"] = holdings[i].percent_shares_held;
-    }
+    // if (i < holdings.length) {
+    //   row["23.A Group Entity"] = holdings[i].name;
+    //   const rawType = holdings[i].type;
+    //   // row["23. Group Entity Type"] = rawType;
+    //   row["23.B Group Entity Type"] = mapGroupEntityType(rawType);
+    //   row["23.C % Shares (%)"] = holdings[i].percent_shares_held;
+    // }
 
     if (i < riskRows.length) {
       Object.assign(row, riskRows[i]);
